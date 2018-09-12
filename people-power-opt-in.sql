@@ -25,12 +25,12 @@ AND cu.subscription_status = 'subscribed'
 DROP TABLE IF EXISTS final;
 CREATE TABLE final AS
 SELECT d.email
-    , cu.first_name
-    , cu.last_name
-    , cu.city
-    , cu.state
-    , cu.postal
-    , cu.country
+    , d.first_name
+    , d.last_name
+    , d.city
+    , d.state
+    , d.postal
+    , d.country
     , cp.normalized_phone AS phone 
 FROM de_dup d 
 LEFT JOIN ak.core_phone cp ON d.id = cp.user_id
