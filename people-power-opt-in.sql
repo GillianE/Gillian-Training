@@ -5,8 +5,14 @@ CREATE TEMP TABLE de_dup AS
 
 SELECT 
 	UPPER(TRIM(cu.email)) AS email
-	, cu.created_at::date AS created_date\
+	, cu.created_at::date AS created_date
 	, cu.id
+	, cu.first_name
+    , cu.last_name
+    , cu.city
+    , cu.state
+    , cu.postal
+    , cu.country
 FROM 
 	ak.core_user cu
 WHERE EXISTS 	
