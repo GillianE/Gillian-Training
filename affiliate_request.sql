@@ -19,6 +19,14 @@ AND e.undeliverable__c = 'false'
 AND p.email_list_code__c IN ('AK', 'AL', 'AR', 'AZ', 'CA', 'CD', 'CN', 'CO', 'CS', 'CT', 'DC', 'DE', 'em', 'FL', 'GA', 'HI', 'IA', 'ID', 'IL', 'IN', 'km', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'PR', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY')
 ;
 
+--count all opted in emails graded A-D
+SELECT COUNT (g.email) 
+FROM email_contact e
+JOIN gillian.dailyrawgrades_20180918 g
+ON e.email = UPPER(TRIM(g.email))
+WHERE g.rollup_grade != 'F' 
+;
+
 --count all opted in emails grades A-D without full addresses
 SELECT COUNT (g.email) 
 FROM email_contact e
@@ -29,5 +37,5 @@ WHERE (e.billingstreet IS NULL
 	OR e.billingcity IS NULL
 	OR e.billingstate IS NULL
 	OR e.billingpostalcode IS NULL
-	OR e.billingpostalcode = '00000')
+	)
 ;
