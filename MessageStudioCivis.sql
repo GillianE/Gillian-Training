@@ -8,6 +8,10 @@ TRUNCATE TABLE wesna.ms_mailing_rollup;
 
 INSERT INTO wesna.ms_mailing_rollup
 (SELECT base_population.mailingid AS mailing_id,
+        base_population.sub_org AS sub_org,
+        base_population.earliest_send AS date_sent,
+        conversion.conversion_count AS conversion_count,
+        revenue.money_raised AS money_raised,
         "target".target_count AS target_count,
         "sent".sent_count AS sent_count,
         deferment_failures.defer_fail_count AS defer_fail_count,
@@ -19,10 +23,23 @@ INSERT INTO wesna.ms_mailing_rollup
         unsubscribes.unsubscribes_count AS unsubscribes_count,
         hard_bounces.hard_bounces_count AS hard_bounces_count,
         soft_bounces.soft_bounces_count AS soft_bounces_count
-   FROM (SELECT mailingid
-           FROM message_studio.v_sm_aggregate_log
-          GROUP BY mailingid
+   FROM (SELECT mailingid,
+                vsgname AS sub_org,
+                MIN(datestamp) AS earliest_send
+           FROM message_studio.v_sm_success_log
+          GROUP BY mailingid,
+                   vsgname
    ) AS base_population
+   LEFT JOIN (SELECT mailingid,
+                     count(1) AS conversion_count
+                FROM message_studio.v_sm_conversion_log
+               GROUP BY mailingid
+   ) AS conversion ON base_population.mailingid = conversion.mailingid
+   LEFT JOIN (SELECT mailingid,
+                     sum(conversionvalue) AS money_raised
+                FROM message_studio.v_sm_conversion_log
+               GROUP BY mailingid
+   ) AS revenue ON base_population.mailingid = revenue.mailingid
    LEFT JOIN (SELECT mailingid,
                      sum(cnt) target_count -- Target count
                 FROM (SELECT mailingid,
@@ -59,60 +76,60 @@ INSERT INTO wesna.ms_mailing_rollup
                 )
                GROUP BY mailingid
    ) AS "sent" ON base_population.mailingid = "sent".mailingid
-   JOIN (SELECT mailingid,
-                count(1) defer_fail_count -- Defer-failed count
-           FROM message_studio.v_sm_aggregate_log
-          WHERE logtype = 2  -- Defer-failed
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid,
+                     count(1) defer_fail_count -- Defer-failed count
+                FROM message_studio.v_sm_aggregate_log
+               WHERE logtype = 2  -- Defer-failed
+               GROUP BY mailingid
    ) AS deferment_failures ON base_population.mailingid = deferment_failures.mailingid
-   JOIN (SELECT mailingid,
-                count(1) delivered_count -- Deliver count
-           FROM message_studio.v_sm_success_log
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid,
+                     count(1) delivered_count -- Deliver count
+                FROM message_studio.v_sm_success_log
+               GROUP BY mailingid
    ) AS delivered ON base_population.mailingid = delivered.mailingid
-   JOIN (SELECT mailingid, 
-                count(distinct(email_sha)) unique_opens_count -- Unique open count
-           FROM message_studio.v_sm_tracking_log
-          WHERE ttype = 'open'
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid, 
+                     count(distinct(email_sha)) unique_opens_count -- Unique open count
+                FROM message_studio.v_sm_tracking_log
+               WHERE ttype = 'open'
+               GROUP BY mailingid
    ) AS unique_opens ON base_population.mailingid = unique_opens.mailingid
-   JOIN (SELECT mailingid, 
-                count(distinct(email_sha)) unique_clicks_count -- Unique click count
-           FROM message_studio.v_sm_tracking_log
-          WHERE ttype = 'click'
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid, 
+                     count(distinct(email_sha)) unique_clicks_count -- Unique click count
+                FROM message_studio.v_sm_tracking_log
+               WHERE ttype = 'click'
+               GROUP BY mailingid
    ) AS unique_clicks ON base_population.mailingid = unique_clicks.mailingid
-   JOIN (SELECT mailingid, 
-                count(1) total_opens_count -- Total opens count
-           FROM message_studio.v_sm_tracking_log
-          WHERE ttype = 'open'
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid, 
+                     count(1) total_opens_count -- Total opens count
+                FROM message_studio.v_sm_tracking_log
+               WHERE ttype = 'open'
+               GROUP BY mailingid
    ) AS total_opens ON base_population.mailingid = total_opens.mailingid
-   JOIN (SELECT mailingid, 
-               count(1) total_clicks_count -- Total clicks count
-          FROM message_studio.v_sm_tracking_log
-         WHERE ttype = 'click'
-         GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid, 
+                     count(1) total_clicks_count -- Total clicks count
+                FROM message_studio.v_sm_tracking_log
+               WHERE ttype = 'click'
+               GROUP BY mailingid
    ) AS total_clicks ON base_population.mailingid = total_clicks.mailingid
-   JOIN (SELECT mailingid,
-                count(distinct(email_sha)) unsubscribes_count -- Unique Unsubscribe count
-           FROM message_studio.v_sm_aggregate_log
-          WHERE logtype = 7  -- "Unsubscribe log"
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid,
+                     count(distinct(email_sha)) unsubscribes_count -- Unique Unsubscribe count
+                FROM message_studio.v_sm_aggregate_log
+               WHERE logtype = 7  -- "Unsubscribe log"
+               GROUP BY mailingid
    ) AS unsubscribes ON base_population.mailingid = unsubscribes.mailingid
-   JOIN (SELECT mailingid,
-                count(distinct(email_sha)) hard_bounces_count -- Hard bounces
-           FROM message_studio.v_sm_aggregate_log						
-          WHERE logtype = 4 -- "Bounce mailbox"
-            AND category = 2 -- "Hard bounce"
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid,
+                     count(distinct(email_sha)) hard_bounces_count -- Hard bounces
+                FROM message_studio.v_sm_aggregate_log						
+               WHERE logtype = 4 -- "Bounce mailbox"
+                 AND category = 2 -- "Hard bounce"
+               GROUP BY mailingid
    ) AS hard_bounces ON base_population.mailingid = hard_bounces.mailingid
-   JOIN (SELECT mailingid,
-                count(distinct(email_sha)) soft_bounces_count -- Soft bounces
-           FROM message_studio.v_sm_aggregate_log						
-          WHERE logtype = 4 -- "Bounce mailbox"
-            AND category = 3 -- "Soft bounce"
-          GROUP BY mailingid
+   LEFT JOIN (SELECT mailingid,
+                     count(distinct(email_sha)) soft_bounces_count -- Soft bounces
+                FROM message_studio.v_sm_aggregate_log						
+               WHERE logtype = 4 -- "Bounce mailbox"
+                 AND category = 3 -- "Soft bounce"
+               GROUP BY mailingid
    ) AS soft_bounces ON base_population.mailingid = soft_bounces.mailingid
- )
+)
 ;
