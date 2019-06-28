@@ -42,9 +42,6 @@ SELECT
            CASE
               WHEN c.campaign_channel LIKE 'A - Advertising%' THEN 'A - Advertising'
 	    --instead of pulling in whole definition of a third party gift here
-	    --I added this as NOT NULL because if that is true then it's because it's a third party gift 
-	      WHEN credit.soft_credit_type_c IS NOT NULL AND child.close_date::date <= '2019-04-01' THEN 'O - Online Platforms'
-              
 	    ELSE c.campaign_channel END AS campaign_channel,
            CASE
               WHEN c.campaign_channel = 'A - Advertising: Online Display' THEN 'Paid Display'
@@ -136,20 +133,8 @@ SELECT
   --            WHEN (child.import_id_c IS NOT NULL
   --                AND child.close_date >= '01-01-2013'
   --                AND child.external_id_c IS NOT NULL) THEN 'online_pre'
-              WHEN (child.external_id_c IS NULL
-                  AND (c.campaign_channel LIKE '%Email%'
-                      OR
-                      c.campaign_channel LIKE '%Advertising%'
-                      OR
-                      c.campaign_channel LIKE '%Website%'
-                      OR
-                      c.campaign_channel LIKE '%Text%'
-                      OR
-                      c.campaign_channel LIKE '%Online%'
-                      OR
-                      c.campaign_channel LIKE '%Social Media%')
-                  AND child.close_date >= '02-16-2018') THEN 'online'
-                  ELSE NULL END AS "tpa_or_online",
+              ELSE 'online'
+              END AS "tpa_or_online",
 	     parent._fivetran_synced as parent_sync_date,
 	     child._fivetran_synced as child_sync_date
  FROM sf.opportunity AS parent
